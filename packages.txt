@@ -1,0 +1,8 @@
+apscheduler
+herbie ==1.0b2
+herbie-data == 2022.9.0.post1
+numcodecs
+setproctitle
+xarray
+dask
+zarr
