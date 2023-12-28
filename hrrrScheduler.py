@@ -27,8 +27,8 @@ logging.basicConfig(level=logging.INFO)  # Configure logging
 scheduler = BackgroundScheduler()
 # temp = 21
 last_execution_time = None
-# data_folder = os.path.join(os.path.dirname(os.getcwd()), 'srv/now/')
-data_folder = '/dataStore/now/'
+data_folder = os.path.join(os.path.dirname(os.getcwd()), 'dataStore/now/')
+# data_folder = '/dataStore/now/'
 
 
 def get_latest_hrrr_data():

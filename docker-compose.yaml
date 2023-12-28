@@ -1,6 +1,6 @@
 version: '3'
 services:
-  service:
+  scheduler:
     build: .
     volumes:
-      - ../dataStore:/dataStore/now
+      - ../dataStore/now/:/dataStore/now
