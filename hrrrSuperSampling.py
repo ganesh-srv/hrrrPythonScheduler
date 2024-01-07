@@ -13,12 +13,12 @@ import logging
 import shutil
 import setproctitle
 import xarray as xr
-from skimage.transform import rescale
+# from skimage.transform import rescale
 import numpy as np
 
 
 sys.stdout.reconfigure(encoding='utf-8')
-setproctitle.setproctitle("HRRRCronJob")
+# setproctitle.setproctitle("HRRRCronJob")
 
 model = 'hrrr'  
 product = 'sfc'
@@ -57,27 +57,48 @@ def get_latest_hrrr_data():
                 hrrr = Herbie(now, model=model, product=product, fxx=fhour)
                 ds_vis = hrrr.xarray('VIS')  # Retrieve surface visibility data
                 ds_t2m = hrrr.xarray('TMP:2 m')  # Retrieve temperature data
-                ds = xr.merge([ds_vis, ds_t2m])  
-                ds_vis = ds['vis']   
-                ds_t2m = ds['t2m']
-                # upscale_factor = 3
-                row_scale = 2  
-                col_scale = 3
-                # Rescale to numpy arrays
-                t2m_1km = rescale(ds_t2m.values, (row_scale, col_scale), order=1)  
-                vis_1km = rescale(ds_vis.values, (row_scale, col_scale), order=1)
-                # Convert back to DataArrays
-                t2m_1km = xr.DataArray(t2m_1km, dims=ds_t2m.dims, name='t2m')
-                vis_1km = xr.DataArray(vis_1km, dims=ds_vis.dims, name='vis')
-                new_x = np.linspace(ds_t2m.x[0], ds_t2m.x[-1], t2m_1km.shape[-1])
-                new_y = np.linspace(ds_t2m.y[0], ds_t2m.y[-1], t2m_1km.shape[-2])
-                new_coords = {'x': new_x, 'y': new_y}
-                t2m_1km.coords['latitude'] = ds_t2m['latitude'].interp(new_coords)
-                t2m_1km.coords['longitude'] = ds_t2m['longitude'].interp(new_coords)
-                vis_1km.coords['latitude'] = ds_vis['latitude'].interp(new_coords)
-                vis_1km.coords['longitude'] = ds_vis['longitude'].interp(new_coords)
-                ds_1km = xr.merge([t2m_1km, vis_1km])
-                ds = ds_1km
+                ds = xr.merge([ds_vis, ds_t2m])
+                # ds_vis = ds['vis']   
+                # ds_t2m = ds['t2m']
+                #Version 1
+                # # upscale_factor = 3
+                # row_scale = 2  
+                # col_scale = 3
+                # # Rescale to numpy arrays
+                # t2m_1km = rescale(ds_t2m.values, (row_scale, col_scale), order=1)  
+                # vis_1km = rescale(ds_vis.values, (row_scale, col_scale), order=1)
+                # # Convert back to DataArrays
+                # t2m_1km = xr.DataArray(t2m_1km, dims=ds_t2m.dims, name='t2m')
+                # vis_1km = xr.DataArray(vis_1km, dims=ds_vis.dims, name='vis')
+                # new_x = np.linspace(ds_t2m.x[0], ds_t2m.x[-1], t2m_1km.shape[-1])
+                # new_y = np.linspace(ds_t2m.y[0], ds_t2m.y[-1], t2m_1km.shape[-2])
+                # new_coords = {'x': new_x, 'y': new_y}
+                # t2m_1km.coords['latitude'] = ds_t2m['latitude'].interp(new_coords)
+                # t2m_1km.coords['longitude'] = ds_t2m['longitude'].interp(new_coords)
+                # vis_1km.coords['latitude'] = ds_vis['latitude'].interp(new_coords)
+                # vis_1km.coords['longitude'] = ds_vis['longitude'].interp(new_coords)
+                # ds_1km = xr.merge([t2m_1km, vis_1km])
+                # ds = ds_1km
+
+                # Version 2
+                ds_alpha = ds
+                # Create new 'y' and 'x' coordinates
+                y_new = np.linspace(ds_alpha.y.min(), ds_alpha.y.max(), ds_alpha.dims['y'] * 3)  # 3 times the original resolution
+                x_new = np.linspace(ds_alpha.x.min(), ds_alpha.x.max(), ds_alpha.dims['x'] * 3)  # 3 times the original resolution
+
+                # Create a new grid
+                y_grid, x_grid = np.meshgrid(y_new, x_new, indexing='ij')
+
+                # Create new 'latitude' and 'longitude' coordinates
+                lat_new = xr.DataArray(ds_alpha.latitude.interp(y=y_new, x=x_new), dims=['y', 'x'], coords={'y': y_grid[:, 0], 'x': x_grid[0, :]})
+                lon_new = xr.DataArray(ds_alpha.longitude.interp(y=y_new, x=x_new), dims=['y', 'x'], coords={'y': y_grid[:, 0], 'x': x_grid[0, :]})
+
+                # Interpolate the data variables to the new grid
+                ds_new = ds_alpha.interp(y=y_new, x=x_new)
+
+                # Assign the new 'latitude' and 'longitude' coordinates
+                ds_new = ds_new.assign_coords(latitude=lat_new, longitude=lon_new)
+                ds = ds_new
                 retrieved_successfully = True
             except Exception as e:
                 logging.error(f'Error retrieving latest subhourly data: {e}')

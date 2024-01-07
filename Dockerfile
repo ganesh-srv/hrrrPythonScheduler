@@ -25,4 +25,6 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r packages.txt
 
 # Run your script when the container launches
-CMD ["python3", "hrrrScheduler.py"]
+# CMD ["python3", "hrrrScheduler.py"]
+CMD ["python3", "hrrrSuperSampling.py"]
+
